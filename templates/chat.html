@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+        <style>
+@media (max-width:768px){
+
+    body{
+        font-size:18px;
+    }
+
+    #users{
+        width:35%;
+    }
+
+    #chat{
+        width:65%;
+    }
+
+    .user{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+}
+
+    #message_input{
+        width:75%;
+        height:40px;
+        font-size:18px;
+    }
+
+    #send_msg{
+        width:22%;
+        height:40px;
+        font-size:18px;
+    }
+
+}
+
+*{
+    box-sizing: border-box;
+}
+.name{
+    margin-right: 0px;
+}
+
+.unread{
+    margin-left: 0px;
+    color: red;
+}
+
+.status{
+    margin-left: 0px;
+    color: green;
+}
+#container{
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    border: 2px solid black;
+}
+
+#users{
+    width: 20%;
+    border-right: 2px solid black;
+    background-color: whitesmoke;
+}
+
+#chat{
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+}
+
+#chat_box{
+    flex: 1;
+    border-bottom: 2px solid black;
+    overflow-y: auto;
+
+}
+
+#input_area{
+    height: 60px;
+    border-top: 2px solid black;
+}
+
+</style>
+    </head>
+    <body>
+        <h1 id="chat_with" style="text-align: center;">no selected user</h1>
+        <div id="container">
+            <div id="users">
+            
+            </div>
+            <div id="chat">
+                <div id="chat_box">
+
+                </div>
+                <div id="input_area">
+                    <input id="message_input">
+                    <button id="send_msg">enter</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const socket = io();
+            
+            function update_user_count(username, count) {
+                document.querySelectorAll(".user").forEach(function(div){
+                    if (div.dataset.username == username){
+                        if (count > 0) {
+                            div.unreadspan.innerText = "◉";
+                        }
+                        else {
+                            div.unreadspan.innerText = "";
+                        }
+                    }
+                })
+            }
+            function update_user_status(username, status) {
+                document.querySelectorAll(".user").forEach(function(div){
+                    console.log(div.dataset.username, div.statusspan.innerText);
+                    if (div.dataset.username == username){
+                        div.statusspan.innerText = status;
+                    }
+                })
+            }
+            
+            const chat_box = document.getElementById("chat_box")
+            const chat_with = document.getElementById("chat_with")
+            const user_div = document.getElementById("users")
+            let current_user_chat = "";
+            let unread_message = {};
+
+// Users load karo
+fetch("/users")
+.then(function(response){
+    return response.json();
+})
+.then(function(users){
+
+    users.forEach(function(user){
+
+        const div = document.createElement("div");
+        const namespan = document.createElement("span")
+        const unreadspan = document.createElement("span")
+        const statusspan = document.createElement("span")
+        
+        div.namespan = namespan;
+        div.unreadspan = unreadspan;
+        div.statusspan = statusspan;
+
+        namespan.classList.add("name");
+        statusspan.classList.add("status");
+        unreadspan.classList.add("unread");
+
+        div.classList.add("user");
+        div.appendChild(namespan);
+        div.appendChild(unreadspan);
+        div.appendChild(statusspan);
+        div.dataset.username = user.username;
+        div.namespan.innerText = user.username;
+        
+
+        // Click event isi waqt lagao
+        div.addEventListener("click", function(){
+
+            // Purana selected user hatao
+            document.querySelectorAll(".user").forEach(function(item){
+                item.style.border = "none";
+            });
+
+            // Naye user ko select karo
+            div.style.border = "1px solid black";
+
+            current_user_chat = user.username;
+            delete unread_message[user.username];
+            update_user_count(user.username, 0)
+            chat_with.innerText = "Chatting with : " + current_user_chat;
+
+            socket.emit("chat_load", {
+                reciver: current_user_chat
+            });
+
+        });
+
+        user_div.appendChild(div);
+
+    });
+
+});
+
+// Chat history receive
+socket.on("chat_history", function(messages){
+
+    chat_box.innerHTML = "";
+
+    messages.forEach(function(msg){
+
+        const p = document.createElement("pre");
+        p.innerText =
+            msg.sender +
+            " : " +
+            msg.message +
+            "   " +
+            msg.send_at;
+
+        chat_box.appendChild(p);
+
+    });
+
+    chat_box.scrollTop = chat_box.scrollHeight;
+
+});
+            socket.on("online_user_list", function(data){
+                console.log("Online List:", data);
+                document.querySelectorAll(".user").forEach(function(div){
+                    div.statusspan.innerText = "○";
+                })
+                data.forEach(function(username){
+                    update_user_status(username, "◉")
+                })
+            })
+            socket.on("user_status", function(data){
+                console.log(data)
+                update_user_status(data.username, data.status)
+            })
+            socket.on("connect", function () {
+                console.log("Connected");
+            });
+            const input = document.getElementById("message_input");
+            
+            document.getElementById("send_msg").addEventListener("click", function(){
+                if(current_user_chat == ""){
+                alert("please select user");
+                return;
+            };
+                const message = input.value;
+                socket.emit("send_message", {
+                    to: current_user_chat,
+                    message: message
+                });
+                input.value = "";
+            });
+            socket.on("new_message", function(data) {
+                console.log(data)
+                if(
+                    current_user_chat == data.sender_name ||
+                    current_user_chat == data.reciver_name
+                ) {
+                    const p = document.createElement("pre");
+                    p.innerText = data.sender_name + " : " + data.message + "   " + data.send_at;
+            
+                    chat_box.appendChild(p);
+                    chat_box.scrollTop = chat_box.scrollHeight;
+                }
+                else if(data.sender_name in unread_message){
+                    unread_message[data.sender_name]++;
+                    update_user_count(data.sender_name, unread_message[data.sender_name]);
+                }
+                else{
+                    unread_message[data.sender_name] = 1;
+                    update_user_count(data.sender_name, unread_message[data.sender_name]);
+                }
+            });
+</script>
+    </body>
+</html>

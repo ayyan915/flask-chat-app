@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    </head>
+    <body>
+        <button id="send_msg">send</button>
+        <script>
+    const socket = io();
+
+    socket.on("connect", function () {
+        console.log("Connected");
+
+        socket.emit("register_user", {
+            username: "ayyan"
+        });
+    });
+    document.getElementById("send_msg").addEventListener("click", function(){
+       socket.emit("send_message", {
+        to: "ayyan",
+        message: "hello ayyan"
+    }); 
+    });
+    socket.on("recive_message", function(data) {
+        console.log(data)
+    });
+</script>
+    </body>
+    
+</html>
