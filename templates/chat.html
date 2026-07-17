@@ -100,6 +100,7 @@
                 </div>
                 <div id="input_area">
                     <input id="message_input">
+                    <br>
                     <button id="send_msg">enter</button>
                 </div>
             </div>
@@ -148,19 +149,25 @@ fetch("/users")
         const namespan = document.createElement("span")
         const unreadspan = document.createElement("span")
         const statusspan = document.createElement("span")
-        
+        const typingspan = document.createElement("span")
+
         div.namespan = namespan;
         div.unreadspan = unreadspan;
         div.statusspan = statusspan;
+        div.typingspan = typingspan;
 
         namespan.classList.add("name");
         statusspan.classList.add("status");
         unreadspan.classList.add("unread");
+        typingspan.classList.add("typing");
 
         div.classList.add("user");
+
         div.appendChild(namespan);
         div.appendChild(unreadspan);
         div.appendChild(statusspan);
+        div.appendChild(typingspan);
+
         div.dataset.username = user.username;
         div.namespan.innerText = user.username;
         
@@ -215,6 +222,22 @@ socket.on("chat_history", function(messages){
     chat_box.scrollTop = chat_box.scrollHeight;
 
 });
+            socket.on("typing_status", function(data) {
+                console.log(data)
+                document.querySelectorAll(".user").forEach(function(div) {
+                    if (div.dataset.username == data) {
+                        div.typingspan.innerText = "typing..."
+                    };
+                });
+            });
+            socket.on("stop_typing", function(data) {
+                console.log(data)
+                document.querySelectorAll(".user").forEach(function(div) {
+                    if (div.dataset.username == data) {
+                        div.typingspan.innerText = ""
+                    };
+                });
+            });
             socket.on("online_user_list", function(data){
                 console.log("Online List:", data);
                 document.querySelectorAll(".user").forEach(function(div){
@@ -223,16 +246,30 @@ socket.on("chat_history", function(messages){
                 data.forEach(function(username){
                     update_user_status(username, "◉")
                 })
-            })
-            socket.on("user_status", function(data){
+            });
+            socket.on("user_status", function(data) {
                 console.log(data)
                 update_user_status(data.username, data.status)
-            })
+            });
             socket.on("connect", function () {
                 console.log("Connected");
             });
             const input = document.getElementById("message_input");
-            
+            input.addEventListener("input", function(){
+                
+                socket.emit("typing_to", {
+                    to: current_user_chat
+                });
+                let typing_timeout;
+                clearTimeout(typing_timeout);
+                typing_timeout = setTimeout(function(){
+                    socket.emit("stop_typing", {
+                    to: current_user_chat
+                });
+
+                }, 1000);
+
+            });
             document.getElementById("send_msg").addEventListener("click", function(){
                 if(current_user_chat == ""){
                 alert("please select user");

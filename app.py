@@ -44,7 +44,7 @@ def user_disconnect():
         online_users.pop(discon_username)
         socketio.emit("user_status", {
             "username": discon_username,
-            "status": "offline"
+            "status": "○"
         })
 
 @socketio.on("send_message")
@@ -85,6 +85,29 @@ def load_chat(data):
     sender = get_jwt_identity()
     messages = get_chat_history_service(sender, reciver)
     socketio.emit("chat_history", messages, to=request.sid)
+
+
+@socketio.on("typing_to")
+def typing_status(data):
+    print(data)
+    verify_jwt_in_request(locations=["cookies"])
+    sender_name = get_jwt_identity()
+    reciver_name = data["to"]
+    reciver_sid = online_users.get(reciver_name)
+    if reciver_sid:
+        print(reciver_sid)
+        socketio.emit("typing_status", sender_name, to=reciver_sid)
+
+@socketio.on("stop_typing")
+def stop_typing(data):
+    print(data)
+    verify_jwt_in_request(locations=["cookies"])
+    sender_name = get_jwt_identity()
+    reciver_name = data["to"]
+    reciver_id = online_users.get(reciver_name)
+    if reciver_id:
+        socketio.emit("stop_typing", sender_name, to=reciver_id)
+
 print("app started")
 if __name__ == '__main__':
     socketio.run(app, host="0.0.0.0", port=5000, debug=True)
