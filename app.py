@@ -5,10 +5,10 @@ from routes.chat import chat
 from datetime import datetime
 from flask_jwt_extended import JWTManager, verify_jwt_in_request, get_jwt_identity
 from services.chat_service import send_message_service, get_chat_history_service
-
+import os
 app = Flask(__name__)
 
-app.config["JWT_SECRET_KEY"] = "ayyan2009"
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
 jwt = JWTManager(app)
 socketio = SocketIO(app)
@@ -110,5 +110,5 @@ def stop_typing(data):
 
 print("app started")
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000)
     
