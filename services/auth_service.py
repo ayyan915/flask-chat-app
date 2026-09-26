@@ -15,7 +15,7 @@ def login_user_service(username, password):
     userpass = get_user_detail_from_db(username)
     if not userpass:
         return None, "user not exists"
-    if check_password_hash(userpass[0], password):
+    if check_password_hash(userpass, password):
         token = create_access_token(identity=username)
         return token, None
     else:

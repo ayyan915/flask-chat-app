@@ -6,7 +6,10 @@ from datetime import datetime
 from flask_jwt_extended import JWTManager, verify_jwt_in_request, get_jwt_identity
 from services.chat_service import send_message_service, get_chat_history_service
 import os
+from database import Base, engine
+import model
 app = Flask(__name__)
+Base.metadata.create_all(bind=engine)
 
 app.config["JWT_SECRET_KEY"] = "ayyan2009"
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]

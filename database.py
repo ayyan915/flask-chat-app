@@ -1,20 +1,23 @@
-import sqlite3
-def db():
-    con = sqlite3.connect("data.db")
-    return con
-con = db()
-cursor = con.cursor()
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
-cursor.execute("""create table if not exists users(
-               id integer primary key autoincrement,
-               name text unique,
-               password text
-               )""")
-cursor.execute("""create table if not exists messages(
-               id integer primary key autoincrement,
-               sender text,
-               reciver text,
-               message text,
-               send_at text
-               )""")
-print("table created")
+database_url = str(os.getenv("DATABASE_URL"))
+
+engine = create_engine(
+    database_url,
+    connect_args={"check_same_thread": False}
+)
+
+Sessionlocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+def get_db():
+    return Sessionlocal()
+    
+
+

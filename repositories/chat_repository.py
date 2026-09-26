@@ -1,24 +1,53 @@
-from database import db
+from database import get_db
+from model import Messages, Users
+from sqlalchemy import or_
+
 
 def save_message_in_db(sender, reciver, message, time):
-    con = db()
-    cursor = con.cursor()
-    cursor.execute("insert into messages(sender, reciver, message, send_at) values(?, ?, ?, ?)", (sender, reciver, message, time,))
-    con.commit()
-    con.close()
-    
+    db = get_db()
+
+    try:
+        new_message = Messages(
+            sender=sender,
+            reciver=reciver,
+            message=message,
+            send_at=time
+        )
+
+        db.add(new_message)
+        db.commit()
+
+    finally:
+        db.close()
+
 
 def get_chat_history(sender, reciver):
-    con = db()
-    cursor = con.cursor()
-    cursor.execute("select * from messages where (sender = ? and reciver = ?) or (sender = ? and reciver = ?) order by send_at", (sender, reciver, reciver, sender))
-    chat_history = cursor.fetchall()
-    con.close()
-    return chat_history
+    db = get_db()
+
+    try:
+        chat_history = db.query(Messages).filter(
+            or_(
+                (Messages.sender == sender) &
+                (Messages.reciver == reciver),
+
+                (Messages.sender == reciver) &
+                (Messages.reciver == sender)
+            )
+        ).order_by(Messages.send_at).all()
+
+        return chat_history
+
+    finally:
+        db.close()
+
 
 def get_users():
-    con = db()
-    cursor = con.cursor()
-    cursor.execute("select name from users")
-    users_list = cursor.fetchall()
-    return users_list
+    db = get_db()
+
+    try:
+        users_list = db.query(Users).all()
+
+        return users_list
+
+    finally:
+        db.close()
