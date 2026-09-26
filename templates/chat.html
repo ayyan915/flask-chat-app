@@ -1,308 +1,430 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        
-        <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-        <style>
-@media (max-width:768px){
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Chat | chatter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<style>
+:root{--ink:#161616;--paper:#F5F5F3;--mute:#6A6A6A;--line:#161616}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;position:relative;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.09;z-index:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
 
-    body{
-        font-size:18px;
-    }
+.stickers{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.st{position:absolute;width:var(--w,100px);height:var(--w,100px);transform:rotate(var(--r,0deg));opacity:.45;
+  filter:drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(2px 4px 3px rgba(0,0,0,.12))}
+@media (max-width:768px){ .stickers{opacity:.6} .st{--w:70px !important} }
 
-    #users{
-        width:35%;
-    }
-
-    #chat{
-        width:65%;
-    }
-
-    .user{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
+/* ---------- header ---------- */
+#topbar{
+  position:relative;z-index:2;display:flex;align-items:center;gap:10px;
+  padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+  background:#fff;border-bottom:2.5px solid var(--ink);
+}
+.back-btn{
+  display:none;border:2px solid var(--ink);background:#fff;border-radius:8px;
+  width:34px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;
+  box-shadow:2px 2px 0 var(--ink);
+}
+.brand-mark{
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.brand-mark .dot{width:10px;height:10px;border-radius:50%;background:var(--ink)}
+.brand-mark span{font-weight:600;font-size:13px;color:var(--mute);letter-spacing:.03em}
+h1#chat_with{
+  font-family:Caveat,cursive;font-weight:700;font-size:24px;
+  margin:0;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 
-    #message_input{
-        width:75%;
-        height:40px;
-        font-size:18px;
-    }
+#container{position:relative;z-index:1;display:flex;width:100%;height:calc(100vh - 57px);height:calc(100dvh - 57px)}
 
-    #send_msg{
-        width:22%;
-        height:40px;
-        font-size:18px;
-    }
-
+/* ---------- sidebar ---------- */
+#users{width:30%;min-width:230px;border-right:2.5px solid var(--ink);background:#fff;overflow-y:auto;padding:12px}
+#users:empty::before{
+  content:"Loading people…";display:block;text-align:center;color:var(--mute);font-size:13px;margin-top:20px;
 }
-
-*{
-    box-sizing: border-box;
+.user{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 11px;border:2px solid var(--ink);border-radius:10px;
+  margin-bottom:9px;cursor:pointer;background:#fff;
+  box-shadow:3px 3px 0 var(--ink);
+  transition:transform .1s,box-shadow .1s;
 }
-.name{
-    margin-right: 0px;
+.user:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.user.active{background:var(--ink);color:#fff}
+.avatar{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:Caveat,cursive;font-weight:700;font-size:18px;color:#fff;
+  border:2px solid var(--ink);
 }
-
+.user-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status{font-size:11px;color:var(--mute)}
+.user.active .status{color:#d8d8d8}
+.typing{font-size:11px;font-style:italic;color:var(--mute)}
+.user.active .typing{color:#eaeaea}
 .unread{
-    margin-left: 0px;
-    color: red;
+  font-size:10.5px;font-weight:700;color:#fff;background:#c0392b;
+  border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+  padding:0 5px;flex-shrink:0;
 }
 
-.status{
-    margin-left: 0px;
-    color: green;
-}
-#container{
-    display: flex;
-    width: 100%;
-    height: 100vh;
-    border: 2px solid black;
+/* ---------- chat panel ---------- */
+#chat{width:70%;display:flex;flex-direction:column;background:var(--paper)}
+#chat_box{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:4px;position:relative}
+#chat_box:empty::before{
+  content:"Pick someone on the left and say hi 👋";
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;color:var(--mute);font-family:Caveat,cursive;font-size:24px;padding:0 30px;
 }
 
-#users{
-    width: 20%;
-    border-right: 2px solid black;
-    background-color: whitesmoke;
+.msg-row{max-width:72%;align-self:flex-start;margin-bottom:6px}
+.msg-sender{display:block;font-size:11.5px;font-weight:600;color:var(--mute);margin:0 0 3px 4px}
+.bubble{
+  background:#fff;border:2px solid var(--ink);border-radius:14px 14px 14px 4px;
+  box-shadow:2.5px 2.5px 0 var(--ink);
+  padding:9px 13px;font-size:14.5px;line-height:1.4;white-space:pre-wrap;word-break:break-word;
 }
-
-#chat{
-    width: 80%;
-    display: flex;
-    flex-direction: column;
-}
-
-#chat_box{
-    flex: 1;
-    border-bottom: 2px solid black;
-    overflow-y: auto;
-
-}
+.msg-time{display:block;font-size:10.5px;color:var(--mute);margin:3px 4px 0}
 
 #input_area{
-    height: 60px;
-    border-top: 2px solid black;
+  display:flex;align-items:center;gap:10px;
+  height:66px;padding:0 14px;padding-bottom:env(safe-area-inset-bottom,0px);
+  border-top:2.5px solid var(--ink);background:#fff;
 }
+#message_input{
+  flex:1;background:#fff;border:2px solid var(--ink);border-radius:20px;
+  padding:11px 16px;color:var(--ink);font-family:Inter,sans-serif;font-size:14px;outline:none;
+}
+#message_input:focus{box-shadow:2px 2px 0 var(--ink)}
+#message_input::placeholder{color:#9A9A9A}
+#send_msg{
+  border:2px solid var(--ink);border-radius:20px;padding:11px 22px;
+  background:var(--ink);color:#fff;font-family:Inter,sans-serif;font-weight:600;font-size:14px;
+  cursor:pointer;box-shadow:3px 3px 0 #bdbdbd;transition:transform .1s,box-shadow .1s;flex-shrink:0;
+}
+#send_msg:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 #bdbdbd}
+#send_msg:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #bdbdbd}
 
+/* ---------- mobile: single panel at a time ---------- */
+@media (max-width:768px){
+  body{font-size:15px}
+  #container{position:relative}
+  #users{width:100%;min-width:0;border-right:none}
+  #chat{
+    width:100%;position:fixed;inset:57px 0 0 0;
+    display:none;
+  }
+  body.chat-open #users{display:none}
+  body.chat-open #chat{display:flex}
+  body.chat-open .back-btn{display:inline-flex;align-items:center;justify-content:center}
+  h1#chat_with{font-size:20px}
+  .msg-row{max-width:85%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-    </head>
-    <body>
-        <h1 id="chat_with" style="text-align: center;">no selected user</h1>
-        <div id="container">
-            <div id="users">
-            
-            </div>
-            <div id="chat">
-                <div id="chat_box">
+</head>
+<body>
 
-                </div>
-                <div id="input_area">
-                    <input id="message_input">
-                    <br>
-                    <button id="send_msg">enter</button>
-                </div>
-            </div>
-        </div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="pencil" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/>
+    </filter>
+    <symbol id="bubble1" viewBox="0 0 100 100">
+      <g filter="url(#pencil)" fill="#fff" stroke="#222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="12" y="16" width="76" height="48" rx="16"/>
+        <path d="M28 64l-6 16 18-10"/>
+      </g>
+    </symbol>
+    <symbol id="dots" viewBox="0 0 100 100">
+      <g filter="url(#pencil)" fill="#fff" stroke="#222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="26" width="88" height="42" rx="21"/>
+        <circle cx="34" cy="47" r="4.4" fill="#222" stroke="none"/>
+        <circle cx="50" cy="47" r="4.4" fill="#222" stroke="none"/>
+        <circle cx="66" cy="47" r="4.4" fill="#222" stroke="none"/>
+      </g>
+    </symbol>
+    <symbol id="heart" viewBox="0 0 100 100">
+      <g filter="url(#pencil)" fill="#fff" stroke="#222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M50 88C18 64 6 46 6 27 6 13 17 3 31 3 41 3 47 9 50 16 53 9 59 3 69 3 83 3 94 13 94 27 94 46 82 64 50 88z"/>
+      </g>
+    </symbol>
+    <symbol id="plane" viewBox="0 0 100 100">
+      <g filter="url(#pencil)" fill="#fff" stroke="#222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 52L94 8 58 92 45 58 5 52z"/>
+        <path d="M45 58l22-24"/>
+      </g>
+    </symbol>
+    <symbol id="thumbsup" viewBox="0 0 100 100">
+      <g filter="url(#pencil)" fill="#fff" stroke="#222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="10" y="48" width="16" height="42" rx="4"/>
+        <path d="M30 48l11-32c2-6 11-6 12 1l1 10h22c7 0 12 7 9 14l-9 31c-2 7-8 12-15 12H30V48z"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
 
-        <script>
-            const socket = io();
-            
-            function update_user_count(username, count) {
-                document.querySelectorAll(".user").forEach(function(div){
-                    if (div.dataset.username == username){
-                        if (count > 0) {
-                            div.unreadspan.innerText = "◉";
-                        }
-                        else {
-                            div.unreadspan.innerText = "";
-                        }
-                    }
-                })
-            }
-            function update_user_status(username, status) {
-                document.querySelectorAll(".user").forEach(function(div){
-                    console.log(div.dataset.username, div.statusspan.innerText);
-                    if (div.dataset.username == username){
-                        div.statusspan.innerText = status;
-                    }
-                })
-            }
-            
-            const chat_box = document.getElementById("chat_box")
-            const chat_with = document.getElementById("chat_with")
-            const user_div = document.getElementById("users")
-            let current_user_chat = "";
-            let unread_message = {};
+<div class="stickers" aria-hidden="true">
+  <svg class="st" style="top:8%;left:34%;--w:80px;--r:-10deg"><use href="#bubble1"/></svg>
+  <svg class="st" style="bottom:10%;left:58%;--w:90px;--r:8deg"><use href="#dots"/></svg>
+  <svg class="st" style="top:60%;right:6%;--w:64px;--r:14deg"><use href="#heart"/></svg>
+  <svg class="st" style="bottom:6%;right:28%;--w:72px;--r:-16deg"><use href="#plane"/></svg>
+  <svg class="st" style="top:30%;left:6%;--w:68px;--r:12deg"><use href="#thumbsup"/></svg>
+</div>
 
-// Users load karo
-fetch("/users")
-.then(function(response){
+<div id="topbar">
+  <button id="back_btn" class="back-btn" aria-label="Back to chats">‹</button>
+  <div class="brand-mark"><span class="dot"></span><span>chatter</span></div>
+  <h1 id="chat_with">no selected user</h1>
+</div>
+
+<div id="container">
+  <div id="users">
+
+  </div>
+  <div id="chat">
+    <div id="chat_box">
+
+    </div>
+    <div id="input_area">
+      <input id="message_input" placeholder="Type a message…">
+      <button id="send_msg">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const socket = io();
+
+  const AVATAR_COLORS = ["#c0392b","#2c6e49","#1f5f8b","#a56a2c","#5b3a8e","#12766b"];
+  function colorFor(username){
+    let h = 0;
+    for (let i = 0; i < username.length; i++) h = (h * 31 + username.charCodeAt(i)) >>> 0;
+    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+  }
+
+  function update_user_count(username, count) {
+    document.querySelectorAll(".user").forEach(function(div){
+      if (div.dataset.username == username){
+        if (count > 0) {
+          div.unreadspan.innerText = count > 9 ? "9+" : String(count);
+          div.unreadspan.style.display = "flex";
+        }
+        else {
+          div.unreadspan.innerText = "";
+          div.unreadspan.style.display = "none";
+        }
+      }
+    })
+  }
+  function update_user_status(username, status) {
+    document.querySelectorAll(".user").forEach(function(div){
+      if (div.dataset.username == username){
+        div.statusspan.innerText = status;
+      }
+    })
+  }
+
+  const chat_box = document.getElementById("chat_box")
+  const chat_with = document.getElementById("chat_with")
+  const user_div = document.getElementById("users")
+  const back_btn = document.getElementById("back_btn")
+  let current_user_chat = "";
+  let unread_message = {};
+
+  back_btn.addEventListener("click", function(){
+    document.body.classList.remove("chat-open");
+  });
+
+  fetch("/users")
+  .then(function(response){
     return response.json();
-})
-.then(function(users){
+  })
+  .then(function(users){
 
     users.forEach(function(user){
 
-        const div = document.createElement("div");
-        const namespan = document.createElement("span")
-        const unreadspan = document.createElement("span")
-        const statusspan = document.createElement("span")
-        const typingspan = document.createElement("span")
+      const div = document.createElement("div");
+      const avatar = document.createElement("span")
+      const textwrap = document.createElement("span")
+      const namespan = document.createElement("span")
+      const statusspan = document.createElement("span")
+      const typingspan = document.createElement("span")
+      const unreadspan = document.createElement("span")
 
-        div.namespan = namespan;
-        div.unreadspan = unreadspan;
-        div.statusspan = statusspan;
-        div.typingspan = typingspan;
+      div.namespan = namespan;
+      div.unreadspan = unreadspan;
+      div.statusspan = statusspan;
+      div.typingspan = typingspan;
 
-        namespan.classList.add("name");
-        statusspan.classList.add("status");
-        unreadspan.classList.add("unread");
-        typingspan.classList.add("typing");
+      avatar.classList.add("avatar");
+      textwrap.classList.add("user-text");
+      namespan.classList.add("name");
+      statusspan.classList.add("status");
+      unreadspan.classList.add("unread");
+      typingspan.classList.add("typing");
 
-        div.classList.add("user");
+      div.classList.add("user");
 
-        div.appendChild(namespan);
-        div.appendChild(unreadspan);
-        div.appendChild(statusspan);
-        div.appendChild(typingspan);
+      avatar.innerText = user.username.charAt(0).toUpperCase();
+      avatar.style.background = colorFor(user.username);
+      statusspan.innerText = "offline";
+      unreadspan.style.display = "none";
 
-        div.dataset.username = user.username;
-        div.namespan.innerText = user.username;
-        
+      textwrap.appendChild(namespan);
+      textwrap.appendChild(statusspan);
+      textwrap.appendChild(typingspan);
 
-        // Click event isi waqt lagao
-        div.addEventListener("click", function(){
+      div.appendChild(avatar);
+      div.appendChild(textwrap);
+      div.appendChild(unreadspan);
 
-            // Purana selected user hatao
-            document.querySelectorAll(".user").forEach(function(item){
-                item.style.border = "none";
-            });
+      div.dataset.username = user.username;
+      div.namespan.innerText = user.username;
 
-            // Naye user ko select karo
-            div.style.border = "1px solid black";
+      div.addEventListener("click", function(){
 
-            current_user_chat = user.username;
-            delete unread_message[user.username];
-            update_user_count(user.username, 0)
-            chat_with.innerText = "Chatting with : " + current_user_chat;
-
-            socket.emit("chat_load", {
-                reciver: current_user_chat
-            });
-
+        document.querySelectorAll(".user").forEach(function(item){
+          item.classList.remove("active");
         });
 
-        user_div.appendChild(div);
+        div.classList.add("active");
+
+        current_user_chat = user.username;
+        delete unread_message[user.username];
+        update_user_count(user.username, 0)
+        chat_with.innerText = current_user_chat;
+        document.body.classList.add("chat-open");
+
+        socket.emit("chat_load", {
+          reciver: current_user_chat
+        });
+
+      });
+
+      user_div.appendChild(div);
 
     });
 
-});
+  });
 
-// Chat history receive
-socket.on("chat_history", function(messages){
+  function render_message(sender, message, time){
+    const row = document.createElement("div");
+    const senderLabel = document.createElement("span");
+    const bubble = document.createElement("div");
+    const timeLabel = document.createElement("span");
+
+    row.classList.add("msg-row");
+    senderLabel.classList.add("msg-sender");
+    bubble.classList.add("bubble");
+    timeLabel.classList.add("msg-time");
+
+    senderLabel.innerText = sender;
+    bubble.innerText = message;
+    timeLabel.innerText = time;
+
+    row.appendChild(senderLabel);
+    row.appendChild(bubble);
+    row.appendChild(timeLabel);
+    chat_box.appendChild(row);
+  }
+
+  socket.on("chat_history", function(messages){
 
     chat_box.innerHTML = "";
 
     messages.forEach(function(msg){
-
-        const p = document.createElement("pre");
-        p.innerText =
-            msg.sender +
-            " : " +
-            msg.message +
-            "   " +
-            msg.send_at;
-
-        chat_box.appendChild(p);
-
+      render_message(msg.sender, msg.message, msg.send_at);
     });
 
     chat_box.scrollTop = chat_box.scrollHeight;
 
-});
-            socket.on("typing_status", function(data) {
-                console.log(data)
-                document.querySelectorAll(".user").forEach(function(div) {
-                    if (div.dataset.username == data) {
-                        div.typingspan.innerText = "typing..."
-                    };
-                });
-            });
-            socket.on("stop_typing", function(data) {
-                console.log(data)
-                document.querySelectorAll(".user").forEach(function(div) {
-                    if (div.dataset.username == data) {
-                        div.typingspan.innerText = ""
-                    };
-                });
-            });
-            socket.on("online_user_list", function(data){
-                console.log("Online List:", data);
-                document.querySelectorAll(".user").forEach(function(div){
-                    div.statusspan.innerText = "○";
-                })
-                data.forEach(function(username){
-                    update_user_status(username, "◉")
-                })
-            });
-            socket.on("user_status", function(data) {
-                console.log(data)
-                update_user_status(data.username, data.status)
-            });
-            socket.on("connect", function () {
-                console.log("Connected");
-            });
-            const input = document.getElementById("message_input");
-            input.addEventListener("input", function(){
-                
-                socket.emit("typing_to", {
-                    to: current_user_chat
-                });
-                let typing_timeout;
-                clearTimeout(typing_timeout);
-                typing_timeout = setTimeout(function(){
-                    socket.emit("stop_typing", {
-                    to: current_user_chat
-                });
+  });
+  socket.on("typing_status", function(data) {
+    document.querySelectorAll(".user").forEach(function(div) {
+      if (div.dataset.username == data) {
+        div.typingspan.innerText = "typing…"
+      };
+    });
+  });
+  socket.on("stop_typing", function(data) {
+    document.querySelectorAll(".user").forEach(function(div) {
+      if (div.dataset.username == data) {
+        div.typingspan.innerText = ""
+      };
+    });
+  });
+  socket.on("online_user_list", function(data){
+    document.querySelectorAll(".user").forEach(function(div){
+      div.statusspan.innerText = "offline";
+    })
+    data.forEach(function(username){
+      update_user_status(username, "online")
+    })
+  });
+  socket.on("user_status", function(data) {
+    update_user_status(data.username, data.status == "◉" ? "online" : "offline")
+  });
+  socket.on("connect", function () {
+    console.log("Connected");
+  });
+  const input = document.getElementById("message_input");
+  input.addEventListener("input", function(){
 
-                }, 1000);
+    socket.emit("typing_to", {
+      to: current_user_chat
+    });
+    let typing_timeout;
+    clearTimeout(typing_timeout);
+    typing_timeout = setTimeout(function(){
+      socket.emit("stop_typing", {
+        to: current_user_chat
+      });
 
-            });
-            document.getElementById("send_msg").addEventListener("click", function(){
-                if(current_user_chat == ""){
-                alert("please select user");
-                return;
-            };
-                const message = input.value;
-                socket.emit("send_message", {
-                    to: current_user_chat,
-                    message: message
-                });
-                input.value = "";
-            });
-            socket.on("new_message", function(data) {
-                console.log(data)
-                if(
-                    current_user_chat == data.sender_name ||
-                    current_user_chat == data.reciver_name
-                ) {
-                    const p = document.createElement("pre");
-                    p.innerText = data.sender_name + " : " + data.message + "   " + data.send_at;
-            
-                    chat_box.appendChild(p);
-                    chat_box.scrollTop = chat_box.scrollHeight;
-                }
-                else if(data.sender_name in unread_message){
-                    unread_message[data.sender_name]++;
-                    update_user_count(data.sender_name, unread_message[data.sender_name]);
-                }
-                else{
-                    unread_message[data.sender_name] = 1;
-                    update_user_count(data.sender_name, unread_message[data.sender_name]);
-                }
-            });
+    }, 1000);
+
+  });
+  document.getElementById("send_msg").addEventListener("click", function(){
+    if(current_user_chat == ""){
+      alert("please select user");
+      return;
+    };
+    const message = input.value;
+    if (!message.trim()) return;
+    socket.emit("send_message", {
+      to: current_user_chat,
+      message: message
+    });
+    input.value = "";
+  });
+  input.addEventListener("keydown", function(e){
+    if (e.key === "Enter") document.getElementById("send_msg").click();
+  });
+  socket.on("new_message", function(data) {
+    if(
+      current_user_chat == data.sender_name ||
+      current_user_chat == data.reciver_name
+    ) {
+      render_message(data.sender_name, data.message, data.send_at);
+      chat_box.scrollTop = chat_box.scrollHeight;
+    }
+    else if(data.sender_name in unread_message){
+      unread_message[data.sender_name]++;
+      update_user_count(data.sender_name, unread_message[data.sender_name]);
+    }
+    else{
+      unread_message[data.sender_name] = 1;
+      update_user_count(data.sender_name, unread_message[data.sender_name]);
+    }
+  });
 </script>
-    </body>
+</body>
 </html>

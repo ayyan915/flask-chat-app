@@ -8,7 +8,7 @@ from services.chat_service import send_message_service, get_chat_history_service
 import os
 app = Flask(__name__)
 
-app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config["JWT_SECRET_KEY"] = "ayyan2009"
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
 jwt = JWTManager(app)
 socketio = SocketIO(app)
