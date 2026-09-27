@@ -8,8 +8,7 @@ load_dotenv()
 database_url = str(os.getenv("DATABASE_URL"))
 
 engine = create_engine(
-    database_url,
-    connect_args={"check_same_thread": False}
+    database_url
 )
 
 Sessionlocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
